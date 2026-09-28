@@ -1,0 +1,8 @@
+{
+  "name": "meio-a-meio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/gen-config.mjs"
+  }
+}

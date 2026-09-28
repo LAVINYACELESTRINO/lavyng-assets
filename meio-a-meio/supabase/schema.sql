@@ -53,16 +53,21 @@ drop trigger if exists docs_fill on public.docs;
 create trigger docs_fill before insert or update on public.docs
 for each row execute function public.docs_fill();
 
+-- volatile (não stable): precisa enxergar a filiação criada no mesmo comando
 create or replace function public.is_member(g text) returns boolean
-language sql stable security definer set search_path = public as $$
+language sql volatile security definer set search_path = public as $$
   select exists (select 1 from public.members where group_id = g and user_id = auth.uid());
 $$;
 
--- Quem cria um grupo vira membro dele automaticamente
+-- Quem cria um grupo vira membro dele automaticamente.
+-- Roda ANTES do insert para que o app já consiga ler a casa que acabou de criar
+-- (o insert devolve a linha, e a leitura exige ser membro). Só vale para grupo
+-- que ainda não existe: tentar "criar" um id existente não dá acesso a ele.
 create or replace function public.on_group_created() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if new.col = 'groups' and auth.uid() is not null then
+  if new.col = 'groups' and auth.uid() is not null
+     and not exists (select 1 from public.docs where path = new.path) then
     insert into public.members (group_id, user_id) values (new.group_id, auth.uid())
     on conflict do nothing;
   end if;
@@ -70,7 +75,9 @@ begin
 end $$;
 
 drop trigger if exists docs_group_created on public.docs;
-create trigger docs_group_created after insert on public.docs
+-- o nome "docs_group_created" vem depois de "docs_fill" em ordem alfabética,
+-- então col/group_id já estão preenchidos quando este gatilho roda
+create trigger docs_group_created before insert on public.docs
 for each row execute function public.on_group_created();
 
 -- Entrar num grupo pelo link de convite (?join=<gid>)

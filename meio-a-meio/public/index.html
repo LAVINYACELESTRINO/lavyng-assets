@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meio a Meio: finanças da casa</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#2B2F8F">
+<meta name="apple-mobile-web-app-title" content="Meio a Meio">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -48,6 +54,7 @@ h2{font-size:1.15rem;font-weight:700}
 .grp{display:flex;align-items:center;gap:8px;background:none;border:0;padding:6px 8px 6px 0;min-width:0;flex:1;text-align:left}
 .grp b{font-family:var(--disp);font-size:1.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grp .chev{color:var(--mu);font-size:.8rem}
+.logo{width:34px;height:34px;border-radius:10px;flex:none;display:block}
 .ib{width:40px;height:40px;border-radius:12px;border:0;background:var(--sf);display:grid;place-items:center;position:relative;box-shadow:var(--shadow);flex:none}
 .ib svg{width:20px;height:20px}
 .badge{position:absolute;top:4px;right:4px;min-width:17px;height:17px;border-radius:9px;background:var(--neg);color:#fff;font-size:.68rem;font-weight:700;display:grid;place-items:center;padding:0 4px}
@@ -447,7 +454,7 @@ function render(){
 const TABS=[['home','Início'],['list','Despesas'],['bills','Contas'],['settle','Acertos'],['reports','Relatórios']];
 function headerHTML(){
   const g=G();const isTab=TABS.some(t=>t[0]===S.view);const n=alerts().length;
-  const left=isTab?`<button class="grp" data-act="groups" aria-label="Trocar de grupo"><b>${esc(g?g.name:'')}</b><span class="chev">▾</span></button>`
+  const left=isTab?`<button class="grp" data-act="groups" aria-label="Trocar de grupo"><img class="logo" src="/icon.svg" alt=""><b>${esc(g?g.name:'')}</b><span class="chev">▾</span></button>`
     :`<button class="back" data-act="nav" data-v="${S.prevView||'home'}">‹ Voltar</button><span style="flex:1"></span>`;
   return `<header class="top"><div class="wrap">${left}
   <button class="ib" data-act="nav" data-v="search" aria-label="Buscar">${ICON.search}</button>

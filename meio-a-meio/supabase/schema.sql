@@ -80,15 +80,74 @@ drop trigger if exists docs_group_created on public.docs;
 create trigger docs_group_created before insert on public.docs
 for each row execute function public.on_group_created();
 
--- Entrar num grupo pelo link de convite (?join=<gid>)
-create or replace function public.join_group(gid text) returns boolean
+-- Entrar num grupo pelo link de convite (?join=<gid>&k=<código>)
+-- Se o grupo tem um código de convite (campo "invite"), o link precisa trazê-lo.
+-- Grupos antigos, sem código, continuam aceitando o link só com o id até alguém gerar um link novo.
+drop function if exists public.join_group(text);
+create or replace function public.join_group(gid text, k text default null) returns boolean
 language plpgsql security definer set search_path = public as $$
+declare code text;
 begin
   if auth.uid() is null then raise exception 'não autenticado'; end if;
-  if not exists (select 1 from public.docs where path = 'groups/' || gid) then return false; end if;
+  select data->>'invite' into code from public.docs where path = 'groups/' || gid;
+  if not found then return false; end if;
+  if code is not null and code is distinct from k
+     and not exists (select 1 from public.members where group_id = gid and user_id = auth.uid()) then
+    return false;
+  end if;
   insert into public.members (group_id, user_id) values (gid, auth.uid()) on conflict do nothing;
   return true;
 end $$;
+
+-- Desliga a conta de uma pessoa do grupo: tira o acesso e solta o nome dela na lista
+-- (os registros e saldos continuam). Se ninguém mais participa, o grupo é apagado.
+create or replace function public.drop_member(gid text, uid uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.docs set data = data || '{"userId":null}'::jsonb
+   where group_id = gid and col = 'groups/' || gid || '/people' and data->>'userId' = uid::text;
+  delete from public.members where group_id = gid and user_id = uid;
+  if not exists (select 1 from public.members where group_id = gid) then
+    delete from public.docs where group_id = gid;
+  end if;
+end $$;
+revoke execute on function public.drop_member(text, uuid) from public, anon, authenticated;
+
+-- Sair de um grupo
+create or replace function public.leave_group(gid text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_member(gid) then raise exception 'você não participa deste grupo'; end if;
+  perform public.drop_member(gid, auth.uid());
+end $$;
+
+-- Tirar o acesso de outra pessoa. O link de convite muda na hora para ela não voltar pelo link antigo.
+create or replace function public.remove_member(gid text, uid uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_member(gid) then raise exception 'você não participa deste grupo'; end if;
+  if uid = auth.uid() then raise exception 'use sair do grupo'; end if;
+  perform public.drop_member(gid, uid);
+  update public.docs set data = data || jsonb_build_object('invite', replace(gen_random_uuid()::text, '-', ''))
+   where path = 'groups/' || gid;
+end $$;
+
+-- Excluir a própria conta: sai de todos os grupos, apaga os dados privados e o login
+create or replace function public.delete_account() returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); g text;
+begin
+  if me is null then raise exception 'não autenticado'; end if;
+  for g in select group_id from public.members where user_id = me loop
+    perform public.drop_member(g, me);
+  end loop;
+  delete from public.docs where owner = me;
+  delete from auth.users where id = me;
+end $$;
+
+-- Mantém o projeto do plano gratuito acordado (chamado 1x por dia pelo cron da Vercel)
+create or replace function public.ping() returns int
+language sql stable set search_path = public as $$ select 1 $$;
 
 -- Atualização parcial (mescla campos de primeiro nível), respeitando RLS
 create or replace function public.doc_merge(p_path text, p_patch jsonb) returns setof public.docs
@@ -124,8 +183,11 @@ create policy members_select on public.members for select to authenticated
 revoke all on public.docs, public.members from anon;
 grant select, insert, update on public.docs to authenticated;
 grant select on public.members to authenticated;
-revoke execute on function public.join_group(text), public.doc_merge(text, jsonb), public.is_member(text) from public, anon;
-grant execute on function public.join_group(text), public.doc_merge(text, jsonb), public.is_member(text) to authenticated;
+revoke execute on function public.join_group(text, text), public.doc_merge(text, jsonb), public.is_member(text),
+  public.leave_group(text), public.remove_member(text, uuid), public.delete_account() from public, anon;
+grant execute on function public.join_group(text, text), public.doc_merge(text, jsonb), public.is_member(text),
+  public.leave_group(text), public.remove_member(text, uuid), public.delete_account() to authenticated;
+grant execute on function public.ping() to anon, authenticated;
 
 -- Tempo real (a outra pessoa vê as mudanças na hora)
 do $$ begin

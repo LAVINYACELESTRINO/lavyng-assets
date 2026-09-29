@@ -54,6 +54,7 @@ main{padding:6px 0 130px}
 section{margin-top:24px}
 .sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
 .link{background:none;border:0;color:var(--br);font-weight:700;padding:4px 0}
+a{color:var(--br);font-weight:600}
 .hello{margin:14px 0 4px;font-size:1.9rem;line-height:1.08}
 
 /* cartões */

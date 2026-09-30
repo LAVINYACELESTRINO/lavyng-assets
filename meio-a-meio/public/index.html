@@ -857,7 +857,7 @@ const ACT={
     const body={kind:'income',amount,desc:f.desc.trim(),source:f.source,date:f.date};if(await write(()=>f.editId?Store.update(pp()+'/'+f.editId,body):Store.set(pp()+'/'+rid(),{...body,createdAt:now()}))){closeSheet();toast('Receita salva')}},
   incomeDel:()=>{const id=S.form.editId;confirmSheet('Excluir receita?','Ela deixa de contar no fechamento do mês.','Excluir',async()=>{if(await write(()=>Store.update(pp()+'/'+id,{deleted:true}))){closeSheet();toast('Receita excluída')}},true)},
   alerts:()=>openAlerts(),
-  menu:()=>{S.sheet={live:null};openSheet(`<div class="ph"><h2>${esc(pnRaw(myPid()))}</h2><button class="x" data-act="close" aria-label="Fechar">✕</button></div><div class="list">${[['reports','📈','Relatórios','Gastos por categoria, pessoa e mês'],['month','📊','Meu mês e receitas','Fechamento mensal, só você vê'],['bills','📅','Calendário financeiro','Vencimentos, parcelas e pagamentos','cal'],['bills','💳','Meus cartões','Faturas e limites','card'],['history','🗂️','Histórico','Tudo que foi registrado e alterado'],['people','👥','Pessoas e grupos','Participantes, viagem e outros grupos'],['notif','🔔','Escolher alertas','Quais avisos aparecem no sino']].map(x=>`<button class="row" data-act="menuGo" data-v="${x[0]}" data-s="${x[4]||''}"><span class="ic">${x[1]}</span><span class="mid"><span class="t">${x[2]}</span><span class="s">${x[3]}</span></span></button>`).join('')}</div><div class="btns"><button class="btn sec" data-act="logout">Sair da conta${S.me.email?' ('+esc(S.me.email)+')':''}</button></div><p class="mu sm" style="text-align:center;margin:14px 0 0">${PRIV?'<a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a> · ':''}<button class="link sm" data-act="accountDel">Excluir minha conta</button></p>`)},
+  menu:()=>{S.sheet={live:null};openSheet(`<div class="ph"><h2>${esc(pnRaw(myPid()))}</h2><button class="x" data-act="close" aria-label="Fechar">✕</button></div><div class="list">${[['reports','📈','Relatórios','Gastos por categoria, pessoa e mês'],['month','📊','Meu mês e receitas','Fechamento mensal, só você vê'],['bills','📅','Calendário financeiro','Vencimentos, parcelas e pagamentos','cal'],['bills','💳','Meus cartões','Faturas e limites','card'],['history','🗂️','Histórico','Tudo que foi registrado e alterado'],['people','👥','Pessoas e grupos','Participantes, viagem e outros grupos'],['notif','🔔','Escolher alertas','Quais avisos aparecem no sino']].map(x=>`<button class="row" data-act="menuGo" data-v="${x[0]}" data-s="${x[4]||''}"><span class="ic">${x[1]}</span><span class="mid"><span class="t">${x[2]}</span><span class="s">${x[3]}</span></span></button>`).join('')+'<button class="row" data-act="impOpen"><span class="ic">📥</span><span class="mid"><span class="t">Importar extrato</span><span class="s">Nubank, Bradesco, Mercado Pago</span></span></button>'}</div><div class="btns"><button class="btn sec" data-act="logout">Sair da conta${S.me.email?' ('+esc(S.me.email)+')':''}</button></div><p class="mu sm" style="text-align:center;margin:14px 0 0">${PRIV?'<a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a> · ':''}<button class="link sm" data-act="accountDel">Excluir minha conta</button></p>`)},
   accountDel:()=>confirmSheet('Excluir sua conta?','Seu login, suas receitas, cartões e contas "só minhas" são apagados para sempre. Você sai de todos os grupos: as despesas que dividiu continuam lá para as outras pessoas, com o seu nome. Grupos em que só você participa são apagados.','Excluir minha conta',async()=>{if(await write(()=>rpc('delete_account'))){try{localStorage.removeItem('mam-gid')}catch(e){}await sb.auth.signOut().catch(()=>{});location.reload()}},true),
   leaveGroup:()=>{const g=G();confirmSheet(`Sair de ${g.name}?`,'Você deixa de ver este grupo. Os registros e saldos continuam para as outras pessoas, com o seu nome. Se você for a última pessoa, o grupo é apagado.','Sair do grupo',async()=>{if(await write(()=>rpc('leave_group',{gid:S.gid}))){try{localStorage.removeItem('mam-gid')}catch(e){}location.reload()}},true)},
   memberRemove:d=>{const p=person(d.id);if(!p||!p.userId)return;confirmSheet(`Tirar o acesso de ${p.name}?`,'Ela deixa de ver este grupo. O nome e os registros dela continuam nas contas. O link de convite muda, então o link antigo para de funcionar.','Tirar acesso',async()=>{if(await write(()=>rpc('remove_member',{gid:S.gid,uid:p.userId}))){closeSheet();toast('Acesso removido. Link de convite trocado.')}},true)},
@@ -884,7 +884,11 @@ const ACT={
   invite:async()=>{const g=G();const url=location.origin+location.pathname+'?join='+encodeURIComponent(S.gid)+(g&&g.invite?'&k='+encodeURIComponent(g.invite):'');const txt='Entre na nossa casa no Meio a Meio: '+url;
     if(navigator.share){try{await navigator.share({title:'Meio a Meio',text:txt,url});return}catch(e){if(e&&e.name==='AbortError')return}}
     try{await navigator.clipboard.writeText(url);toast('Link de convite copiado')}catch(e){prompt('Copie o link de convite:',url)}},
-  joinNew:async()=>{const n=$('#cl1').value.trim();if(!n||!S.uid)return;await write(()=>Store.set(gp('people')+'/'+rid(),{name:n,userId:S.uid,color:S.people.length%PCOLORS.length,createdAt:now()}))}
+  joinNew:async()=>{const n=$('#cl1').value.trim();if(!n||!S.uid)return;await write(()=>Store.set(gp('people')+'/'+rid(),{name:n,userId:S.uid,color:S.people.length%PCOLORS.length,createdAt:now()}))},
+  impOpen:()=>{S.form={imp:{bank:null,rows:[],step:'pick'}};S.sheet={live:null};renderImport()},
+  impBank:d=>{if(!S.form||!S.form.imp)return;S.form.imp.bank=d.v;renderImport()},
+  impBack:()=>{if(!S.form||!S.form.imp)return;S.form.imp.step='pick';renderImport()},
+  impSave:async()=>{if(!S.form||!S.form.imp)return;const f=S.form.imp;const rows=f.rows.filter(r=>!r.skip);if(!rows.length)return;const ok=await write(async()=>{for(const r of rows)await Store.set(pp()+'/'+rid(),{kind:'expense',desc:r.desc,amount:r.amount,category:r.cat,date:r.date,due:'',paid:true,paidAt:r.date,method:'Cartão de crédito',cardId:'',inst:null,hist:[H('Importado — '+f.bank)],createdAt:now()})});if(ok){closeSheet();toast(rows.length+(rows.length!==1?' despesas importadas':' despesa importada')+' de '+f.bank)}}
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(el){const a=ACT[el.dataset.act];if(a){e.preventDefault();a(el.dataset,el,e)}return}if(e.target.id==='ov')closeSheet()});
 document.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('[data-more]')&&S.form)S.form.more=e.target.open},true);
@@ -899,12 +903,78 @@ document.addEventListener('input',e=>{const el=e.target;
   if(el.dataset.flt){S.f[el.dataset.flt]=el.value;render()}
   if(el.dataset.rp){S[el.dataset.rp]=el.value;render()}
   if(el.dataset.notif&&S.uid){const P=prefs();Store.set(pp()+'/prefs',{...P,kind:'prefs',notif:{...(P.notif||{}),[el.dataset.notif]:el.checked}}).catch(()=>toast('Não foi possível salvar.'))}});
-document.addEventListener('change',async e=>{const el=e.target;if(!el.dataset.attach||!el.files||!el.files[0])return;const file=el.files[0];if(!S.assets)return;
+document.addEventListener('change',async e=>{const el=e.target;
+  if(el.dataset.impchk!==undefined&&S.form&&S.form.imp){S.form.imp.rows[+el.dataset.impchk].skip=!el.checked;renderImport();return}
+  if(el.dataset.imp&&el.files&&el.files[0]&&S.form&&S.form.imp){const reader=new FileReader();reader.onload=ev=>{let rows=[];try{const bk=S.form.imp.bank;const tx=ev.target.result;if(bk==='Nubank')rows=parseNubank(tx);else if(bk==='Bradesco')rows=parseBradescoOFX(tx);else rows=parseMercadoPago(tx)}catch(ex){}if(!rows.length){const e=$('#imperr');if(e){e.textContent='Não foi possível ler o arquivo. Verifique o formato e o banco selecionado.';e.hidden=false}return}S.form.imp.rows=rows;S.form.imp.step='review';renderImport()};reader.readAsText(el.files[0],'UTF-8');return}
+  if(!el.dataset.attach||!el.files||!el.files[0])return;const file=el.files[0];if(!S.assets)return;
   if(file.size>20*1024*1024){toast('Arquivo maior que 20 MB.');return}toast('Enviando anexo…');
   try{const r=await S.assets.upload(file);const a={id:r.id,name:file.name.slice(0,60),type:file.type};
     if(el.dataset.attach==='form'){S.form.attach=S.form.attach.concat(a);renderForm()}
     else{const t=S.tx.find(x=>x.id===el.dataset.attach);await write(()=>Store.update(gp('tx')+'/'+t.id,{attach:(t.attach||[]).concat(a),hist:(t.hist||[]).concat([H('Anexo adicionado: '+a.name)])}))}toast('Anexo salvo')}
   catch(x){toast('Não foi possível enviar o anexo.')}});
+/* ============ importar extrato ============ */
+function impHint(b){return b==='Nubank'?'No app: Cartão → ícone de compartilhar → Exportar fatura → CSV':b==='Bradesco'?'No app ou internet banking: Extrato → Exportar → OFX':'No app: Atividade → três pontinhos → Baixar resumo de atividades → CSV'}
+function renderImport(){
+  const f=S.form.imp;
+  if(f.step==='pick'){
+    openSheet(`<div class="ph"><h2>Importar extrato</h2><button class="x" data-act="close" aria-label="Fechar">✕</button></div><p class="mu sm">Baixe o extrato no app do banco e importe aqui. Só você vê as despesas importadas.</p><div class="fld"><span class="lbl">Banco</span><div class="chips">${['Nubank','Bradesco','Mercado Pago'].map(b=>chip('impBank','b',b,b,f.bank===b)).join('')}</div></div>${f.bank?`<div class="fld"><label>Arquivo do extrato</label><input type="file" class="in" accept=".csv,.ofx,.txt" data-imp="1"><p class="hint">${impHint(f.bank)}</p></div>`:'<p class="hint" style="margin-top:8px">Selecione o banco para ver as instruções de exportação.</p>'}<div id="imperr" class="err" hidden></div>`);
+  }else{
+    const rows=f.rows;const n=rows.filter(r=>!r.skip).length;
+    openSheet(`<div class="ph"><h2>Revisar importação</h2><button class="x" data-act="close" aria-label="Fechar">✕</button></div><p class="mu sm">${n} de ${rows.length} selecionadas · ${esc(f.bank)}</p><div class="list">${rows.map((r,i)=>`<label class="row" style="cursor:pointer;gap:10px"><input type="checkbox" ${r.skip?'':'checked'} data-impchk="${i}" style="flex-shrink:0;width:18px;height:18px"><span class="mid"><span class="t">${esc(r.desc)}</span><span class="s">${fd(r.date)} · ${esc(r.cat)}</span></span><span style="font-weight:600;white-space:nowrap">${brl(r.amount)}</span></label>`).join('')}</div><div id="imperr" class="err" hidden></div><div class="btns"><button class="btn" data-act="impSave">Importar ${n} despesa${n!==1?'s':''}</button><button class="btn sec" data-act="impBack">Escolher outro arquivo</button></div>`);
+  }
+}
+function parseNubank(t){
+  const lines=t.trim().split(/\r?\n/);const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const p=lines[i].split(',');if(p.length<3)continue;
+    const date=p[0].trim();const amtStr=p[p.length-1].trim().replace(',','.');const amt=parseFloat(amtStr);
+    const desc=p.slice(1,p.length-1).join(',').trim().replace(/^"|"$/g,'');
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(amt)||amt<=0)continue;
+    rows.push({date,desc,amount:Math.round(amt*100),cat:guessCat(desc)||'Outros',skip:false});
+  }
+  return rows;
+}
+function parseBradescoOFX(t){
+  const rows=[];let m;
+  // XML-style (closing tags)
+  const xmlRe=/<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+  while((m=xmlRe.exec(t))!==null){
+    const b=m[1];const g=tag=>{const r=new RegExp('<'+tag+'>([^<\\n]+)','i');const x=r.exec(b);return x?x[1].trim():''};
+    const dt=g('DTPOSTED')||g('DTUSER');const amtStr=g('TRNAMT');const memo=g('MEMO')||g('NAME');
+    if(!dt||!amtStr)continue;const amt=parseFloat(amtStr);if(isNaN(amt)||amt>=0)continue;
+    rows.push({date:dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8),desc:memo,amount:Math.round(Math.abs(amt)*100),cat:guessCat(memo)||'Outros',skip:false});
+  }
+  if(rows.length)return rows;
+  // SGML-style (no closing tags)
+  const sgRe=/<STMTTRN>([\s\S]*?)(?=<STMTTRN>|<\/BANKTRANLIST>|$)/gi;
+  while((m=sgRe.exec(t))!==null){
+    const b=m[1];const g=tag=>{const r=new RegExp('<'+tag+'>([^\\r\\n<]+)','i');const x=r.exec(b);return x?x[1].trim():''};
+    const tp=g('TRNTYPE');const dt=g('DTPOSTED')||g('DTUSER');const amtStr=g('TRNAMT');const memo=g('MEMO')||g('NAME');
+    if(!dt||!amtStr)continue;const amt=parseFloat(amtStr);if(isNaN(amt)||amt===0)continue;
+    if(amt>0&&tp!=='DEBIT')continue;
+    rows.push({date:dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8),desc:memo,amount:Math.round(Math.abs(amt)*100),cat:guessCat(memo)||'Outros',skip:false});
+  }
+  return rows;
+}
+function parseMercadoPago(t){
+  const sep=t.indexOf(';')>=0?';':',';
+  const lines=t.trim().split(/\r?\n/);if(lines.length<2)return[];
+  const hdrs=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
+  const ci=k=>hdrs.findIndex(h=>k.some(s=>h.includes(s)));
+  const iDate=ci(['data','fecha']);const iDesc=ci(['descri','tipo de opera','tipo']);const iAmt=ci(['saída','saliente','valor líquido','valor','total']);
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const p=lines[i].split(sep).map(c=>c.trim().replace(/^"|"$/g,''));
+    const dateRaw=(iDate>=0&&p[iDate]?p[iDate]:'').split(' ')[0];
+    const desc=iDesc>=0&&p[iDesc]?p[iDesc]:'';
+    const amtRaw=(iAmt>=0&&p[iAmt]?p[iAmt]:'').replace(/[R$\s.]/g,'').replace(',','.');
+    const amt=parseFloat(amtRaw);if(!dateRaw||isNaN(amt)||amt>=0)continue;
+    let date=dateRaw;
+    if(/^\d{2}\/\d{2}\/\d{4}$/.test(date)){const[d,mo,y]=date.split('/');date=y+'-'+mo+'-'+d}
+    rows.push({date,desc,amount:Math.round(Math.abs(amt)*100),cat:guessCat(desc)||'Outros',skip:false});
+  }
+  return rows;
+}
 boot();
 </script>
 </body>
